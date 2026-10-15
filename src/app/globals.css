@@ -1,26 +1,171 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  --color-ink: #0b0a09;
+  --color-ink-2: #151412;
+  --color-ink-3: #22201c;
+  --color-ivory: #f3eee4;
+  --color-ivory-2: #e9e2d4;
+  --color-ivory-3: #d9d0be;
+  /* muted text on ivory (≈ 6.4:1) and on ink (≈ 7.5:1) */
+  --color-muted: #595349;
+  --color-mist: #a8a196;
+  --color-marigold: #e0a33a;
+  --color-danger: #a8261b;
+  --color-success: #2b6a3a;
+
+  --font-sans: var(--font-inter-tight), var(--font-noto-deva), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-instrument-serif), var(--font-noto-serif-deva), Georgia, serif;
+  --font-deva: var(--font-noto-deva), var(--font-inter-tight), sans-serif;
+
+  --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  -webkit-text-size-adjust: 100%;
+  text-rendering: optimizeLegibility;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-ivory);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+}
+
+/* Devanagari needs room for matras above and below the line. */
+:lang(hi) body,
+:lang(mr) body {
+  line-height: 1.7;
+}
+
+::selection {
+  background: var(--color-marigold);
+  color: var(--color-ink);
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-marigold);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* ---------- Editorial display type ---------- */
+.display {
+  line-height: 0.9;
+  letter-spacing: -0.035em;
+  font-weight: 500;
+}
+:lang(hi) .display,
+:lang(mr) .display {
+  line-height: 1.18;
+  letter-spacing: -0.01em;
+}
+.serif-i {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+/* Devanagari has no italic: use the serif upright with a warmer colour cue instead */
+:lang(hi) .serif-i,
+:lang(mr) .serif-i {
+  font-style: normal;
+  letter-spacing: 0;
+}
+
+.mask-line {
+  display: block;
+  overflow: hidden;
+  /* room for descenders (the italic "g") without loosening the line rhythm */
+  padding-bottom: 0.14em;
+  margin-bottom: -0.08em;
+}
+:lang(hi) .mask-line,
+:lang(mr) .mask-line {
+  padding-top: 0.08em;
+  padding-bottom: 0.14em;
+}
+
+.kicker {
+  font-size: 0.75rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+:lang(hi) .kicker,
+:lang(mr) .kicker {
+  letter-spacing: 0.02em;
+  font-size: 0.875rem;
+}
+
+/* ---------- Marketing surfaces ---------- */
+.grain::after {
+  content: "";
+  position: fixed;
+  inset: -50%;
+  pointer-events: none;
+  z-index: 60;
+  opacity: 0.06;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+html.has-cursor,
+html.has-cursor * {
+  cursor: none !important;
+}
+
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+.marquee {
+  animation: marquee 40s linear infinite;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.fade-up {
+  animation: fade-up 0.6s var(--ease-expo) both;
+}
+
+@keyframes toast {
+  0% { opacity: 0; transform: translateY(16px); }
+  12%, 85% { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: translateY(8px); }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
