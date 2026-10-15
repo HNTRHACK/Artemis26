@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Phone } from "lucide-react";
-import { Badge, Button, EmptyState, Field, PageTitle, Select } from "@/components/ui";
+import { Lock } from "lucide-react";
+import { Badge, EmptyState, Field, PageTitle, Select } from "@/components/ui";
 import { tx, useLang, useT } from "@/lib/i18n";
 import { distanceKm } from "@/lib/geo";
 import { matchScore } from "@/lib/jobs";
@@ -19,7 +19,6 @@ export default function WorkersPage() {
   const [trade, setTrade] = useState<Trade | "all">("all");
   const [area, setArea] = useState<Area | "all">("all");
   const [jobId, setJobId] = useState<string>("");
-  const [revealed, setRevealed] = useState<string[]>([]);
   const job = myJobs.find((j) => j.id === jobId);
 
   const list = useMemo(() => {
@@ -110,15 +109,9 @@ export default function WorkersPage() {
                   <span key={o} className="rounded-full bg-ivory-2 px-3 py-1">+ {t.trades[o]}</span>
                 ))}
               </div>
-              {revealed.includes(w.id) ? (
-                <a href={`tel:${w.phone}`} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-ink px-5 font-semibold text-ivory">
-                  <Phone size={18} aria-hidden /> <span className="tabular-nums">{w.phone}</span>
-                </a>
-              ) : (
-                <Button variant="secondary" className="min-h-12" onClick={() => setRevealed((r) => [...r, w.id])}>
-                  {t.workersBrowse.showPhone}
-                </Button>
-              )}
+              <p className="flex items-center gap-2 rounded-2xl bg-ivory-2 px-4 py-3 text-sm text-muted">
+                <Lock size={14} aria-hidden /> {t.hire.contactLocked}
+              </p>
             </li>
           ))}
         </ul>

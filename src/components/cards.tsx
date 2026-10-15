@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ArrowUpRight, MapPin } from "lucide-react";
-import { tx, useLang, useT } from "@/lib/i18n";
-import type { Application, Job, WorkerProfile } from "@/lib/types";
+import { formatDate, formatDateTime, tx, useLang, useT } from "@/lib/i18n";
+import type { Application, Job, Ticket, WorkerProfile } from "@/lib/types";
 import { Badge, cx } from "./ui";
 
 /** Current time captured once per mount (keeps render pure). */
@@ -25,8 +25,79 @@ export function Wage({ job, size = "md" }: { job: Pick<Job, "wage" | "wageUnit">
   );
 }
 
-export function statusTone(s: Application["status"]) {
-  return s === "shortlisted" ? "success" : s === "declined" ? "danger" : s === "withdrawn" ? "neutral" : "accent";
+export function statusTone(s: Application["status"]): "neutral" | "accent" | "success" | "danger" | "dark" {
+  switch (s) {
+    case "offered":
+      return "accent";
+    case "shortlisted":
+    case "accepted":
+    case "confirmed":
+    case "in_progress":
+    case "completed":
+      return "success";
+    case "declined":
+      return "danger";
+    case "cancelled":
+      return "neutral";
+    default:
+      return "dark";
+  }
+}
+
+export function StatusBadge({ status }: { status: Application["status"] }) {
+  const t = useT();
+  return <Badge tone={statusTone(status)}>{t.appStatus[status]}</Badge>;
+}
+
+/** Ordered list of lifecycle events. */
+export function StatusTimeline({ history }: { history: Application["history"] }) {
+  const t = useT();
+  const lang = useLang();
+  return (
+    <ol className="flex flex-col gap-3 border-l-2 border-ivory-3 pl-4">
+      {history.map((e, i) => (
+        <li key={i} className="relative">
+          <span aria-hidden className="absolute top-1.5 -left-[1.4rem] size-3 rounded-full border-2 border-ivory bg-ink" />
+          <p className="font-semibold">{t.appStatus[e.status]}</p>
+          <p className="text-sm text-muted">
+            {formatDateTime(e.at, lang)} · {t.ui.by[e.by]}
+            {e.note === "simulated" && <> · {t.ui.simulated}</>}
+          </p>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+export function TicketCard({ ticket, status, href }: { ticket: Ticket; status: Application["status"]; href: string }) {
+  const t = useT();
+  const lang = useLang();
+  return (
+    <Link
+      href={href}
+      className="group relative flex flex-col gap-3 overflow-hidden rounded-3xl bg-ink p-5 text-ivory transition-transform hover:-translate-y-0.5 sm:p-6"
+      data-ticket={ticket.code}
+    >
+      <span aria-hidden className="absolute top-1/2 -left-3 size-6 -translate-y-1/2 rounded-full bg-ivory" />
+      <span aria-hidden className="absolute top-1/2 -right-3 size-6 -translate-y-1/2 rounded-full bg-ivory" />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="font-mono text-sm tracking-wider text-marigold">{ticket.code}</span>
+        <Badge tone={statusTone(status)}>{t.appStatus[status]}</Badge>
+      </div>
+      <p className="text-xl leading-snug font-semibold">{tx(ticket.title, lang)}</p>
+      <div className="flex flex-wrap items-end justify-between gap-3 border-t border-dashed border-ivory/25 pt-3 text-sm">
+        <span className="text-mist">
+          {t.areas[ticket.area]} · {formatDate(ticket.startDate, lang)}
+        </span>
+        <span className="text-lg font-semibold">
+          {t.common.inr(ticket.wage)} <span className="text-sm font-normal text-mist">{t.wageUnit[ticket.wageUnit]}</span>
+        </span>
+      </div>
+      <span className="inline-flex items-center gap-1 text-sm font-semibold text-marigold">
+        {t.ticket.open} <ArrowUpRight size={16} aria-hidden />
+      </span>
+    </Link>
+  );
 }
 
 export function JobCard({
@@ -52,9 +123,9 @@ export function JobCard({
     >
       <div className="flex flex-wrap items-center gap-2">
         <Badge tone="dark">{t.trades[job.trade]}</Badge>
-        {status && <Badge tone={statusTone(status)}>{t.appStatus[status]}</Badge>}
+        {status && <StatusBadge status={status} />}
         {saved && !status && <Badge>{t.job.savedLabel}</Badge>}
-        {job.status === "closed" && <Badge tone="danger">{t.employer.closed}</Badge>}
+        {job.status !== "open" && <Badge tone="danger">{job.status === "cancelled" ? t.appStatus.cancelled : t.employer.closed}</Badge>}
         <span className="ml-auto text-sm text-muted">{t.common.postedAgo((now - job.postedAt) / 3_600_000)}</span>
       </div>
       <div>

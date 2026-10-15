@@ -10,6 +10,7 @@ import { DICTS, useLang, useT } from "@/lib/i18n";
 import { TRADES } from "@/lib/types";
 import { LangSwitcher } from "../LangSwitcher";
 import { cx } from "../ui";
+import { Wordmark } from "../Wordmark";
 import { Cursor, Lines, Magnetic, SectionIndicator } from "./motion";
 import { PhoneScreens } from "./PhoneScreens";
 
@@ -218,7 +219,8 @@ export function Home() {
   const navLinks = [
     { label: m.navWorkers, href: "/worker" },
     { label: m.navEmployers, href: "/employer" },
-    { label: m.navRights, href: "/worker/rights" },
+    { label: t.nav.demo, href: "/mobile-demo" },
+    { label: t.nav.faq, href: "/faq" },
   ];
   const marquee = TRADES.flatMap((tr) => [DICTS.en.trades[tr], DICTS.hi.trades[tr], DICTS.mr.trades[tr]]);
 
@@ -235,8 +237,8 @@ export function Home() {
         </div>
         <div className="flex items-end justify-between gap-6">
           <p className="ks-loader-word mask-line display text-[clamp(3rem,12vw,11rem)]">
-            <span className="inline-block">Kaam</span>
-            <span className="serif-i inline-block text-marigold">setu</span>
+            <span className="inline-block">UM</span>
+            <span className="serif-i inline-block text-marigold">ANG</span>
           </p>
           <p className="ks-count font-mono text-xl tabular-nums sm:text-3xl">000</p>
         </div>
@@ -245,8 +247,8 @@ export function Home() {
       {/* ---------- nav ---------- */}
       <header className="fixed inset-x-0 top-0 z-50 text-ivory mix-blend-difference">
         <div className="flex items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-10">
-          <Link href="/" className="font-serif text-2xl tracking-tight" data-cursor>
-            {t.common.appName}
+          <Link href="/" className="text-2xl" data-cursor aria-label={t.brand.name}>
+            <Wordmark accent="" />
           </Link>
           <nav aria-label="Primary" className="hidden items-center gap-8 lg:flex">
             {navLinks.map((l) => (
@@ -257,6 +259,9 @@ export function Home() {
             ))}
           </nav>
           <div className="flex items-center gap-2">
+            <Link href="/choose-role" className="hidden min-h-11 items-center rounded-full bg-ivory px-4 text-sm font-semibold text-ink md:inline-flex" data-cursor>
+              {t.nav.openApp}
+            </Link>
             <div className="hidden sm:block">
               <LangSwitcher tone="dark" />
             </div>
@@ -286,7 +291,7 @@ export function Home() {
         )}
       >
         <div className="flex items-center justify-between">
-          <span className="font-serif text-2xl">{t.common.appName}</span>
+          <Wordmark className="text-2xl" accent="text-[#b5721a]" />
           <button
             type="button"
             className="grid size-11 place-items-center rounded-full border border-ink/30"
@@ -597,10 +602,10 @@ export function Home() {
           </div>
         </div>
         <p aria-hidden className="footer-word mask-line display mt-10 text-center text-[22vw] leading-[0.8] tracking-tighter">
-          {"Kaam".split("").map((c, i) => (
+          {"UM".split("").map((c, i) => (
             <span key={i} className="inline-block">{c}</span>
           ))}
-          {"setu".split("").map((c, i) => (
+          {"ANG".split("").map((c, i) => (
             <span key={`s${i}`} className="serif-i inline-block text-marigold">{c}</span>
           ))}
         </p>

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { Button, ChoiceGrid, Field, TextInput, cx } from "@/components/ui";
+import { VoiceGuide } from "@/components/VoiceGuide";
 import { DICTS, LANGS, useT } from "@/lib/i18n";
 import { useApp } from "@/lib/store";
 import { AREAS, TRADES, type Area, type Lang, type Trade } from "@/lib/types";
@@ -98,7 +99,9 @@ export default function Onboarding() {
       </div>
 
       <h1 className="display text-4xl sm:text-5xl">{title}</h1>
-      <p className="mt-3 mb-8 text-lg text-muted">{hint}</p>
+      <p className="mt-3 mb-4 text-lg text-muted">{hint}</p>
+      {step === 1 && <VoiceGuide guide="onboarding" className="mb-8" />}
+      {step > 1 && <div className="mb-8" />}
 
       <div key={step} className="fade-up">
         {step === 1 && (
@@ -159,7 +162,7 @@ export default function Onboarding() {
                 />
               )}
             </Field>
-            <Field label={t.onboarding.phoneLabel} hint={t.onboarding.phoneHint} error={errors.phone}>
+            <Field label={t.onboarding.phoneLabel} hint={`${t.onboarding.phoneHint} ${t.phoneDemoHint}`} error={errors.phone}>
               {(id, d) => (
                 <TextInput
                   id={id}

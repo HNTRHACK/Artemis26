@@ -314,9 +314,12 @@ export const SEED_WORKERS: WorkerProfile[] = [
 
 /** Interest already expressed by seed workers on jobs owned by the local employer. */
 export function buildSeedApplications(now: number): Application[] {
-  const a = (id: string, jobId: string, workerId: string, ageH: number, status: Application["status"] = "interested"): Application => ({
-    id, jobId, workerId, status, createdAt: now - ageH * HOUR,
-  });
+  const a = (id: string, jobId: string, workerId: string, ageH: number, status: "interested" | "shortlisted" = "interested"): Application => {
+    const createdAt = now - ageH * HOUR;
+    const history: Application["history"] = [{ status: "interested", at: createdAt, by: "worker" }];
+    if (status === "shortlisted") history.push({ status: "shortlisted", at: createdAt + HOUR / 2, by: "employer" });
+    return { id, jobId, workerId, status, createdAt, updatedAt: history[history.length - 1].at, history };
+  };
   return [
     a("app-s1", "job-001", "w-01", 2, "shortlisted"),
     a("app-s2", "job-001", "w-13", 1),

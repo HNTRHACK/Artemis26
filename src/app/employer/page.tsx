@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { ArrowUpRight, MapPin } from "lucide-react";
-import { useNow, Wage } from "@/components/cards";
+import { TicketCard, useNow, Wage } from "@/components/cards";
 import { EmployerSetup } from "@/components/EmployerSetup";
 import { Badge, EmptyState, LinkButton, PageTitle, cx } from "@/components/ui";
 import { tx, useLang, useT } from "@/lib/i18n";
+import { filledCount } from "@/lib/lifecycle";
 import { useApp } from "@/lib/store";
 
 export default function EmployerDashboard() {
@@ -15,21 +17,34 @@ export default function EmployerDashboard() {
   const employer = useApp((s) => s.employer);
   const allJobs = useApp((s) => s.jobs);
   const applications = useApp((s) => s.applications);
+  const tickets = useApp((s) => s.tickets);
+  const [editing, setEditing] = useState(false);
 
   if (!employer) return <EmployerSetup />;
+  if (editing) return <EmployerSetup initial={employer} onDone={() => setEditing(false)} />;
 
   const jobs = allJobs.filter((j) => j.owner === "local").sort((a, b) => b.postedAt - a.postedAt);
-  const appsFor = (id: string) => applications.filter((a) => a.jobId === id && a.status !== "withdrawn");
+  const appsFor = (id: string) => applications.filter((a) => a.jobId === id && a.status !== "cancelled" && !(a.status === "declined" && a.declinedBy === "worker"));
   const open = jobs.filter((j) => j.status === "open");
   const interested = jobs.reduce((n, j) => n + appsFor(j.id).length, 0);
+  const localJobIds = new Set(jobs.map((j) => j.id));
+  const myTickets = tickets
+    .filter((x) => localJobIds.has(x.jobId))
+    .sort((a, b) => b.createdAt - a.createdAt)
+    .map((ticket) => ({ ticket, app: applications.find((a) => a.id === ticket.applicationId) }));
   const shortlisted = jobs.reduce((n, j) => n + appsFor(j.id).filter((a) => a.status === "shortlisted").length, 0);
 
   return (
     <div>
       <PageTitle title={t.employer.title} sub={employer.organisation || employer.name}>
-        <LinkButton href="/employer/post" variant="accent">
-          + {t.employerNav.post}
-        </LinkButton>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => setEditing(true)} className="min-h-14 rounded-full px-5 font-semibold underline-offset-4 hover:underline">
+            {t.common.edit}
+          </button>
+          <LinkButton href="/employer/post" variant="accent">
+            + {t.employerNav.post}
+          </LinkButton>
+        </div>
       </PageTitle>
 
       <dl className="mb-10 grid grid-cols-3 border-y-2 border-ink">
@@ -65,10 +80,11 @@ export default function EmployerDashboard() {
                   <div className="min-w-0">
                     <div className="mb-2 flex flex-wrap items-center gap-2">
                       <Badge tone={job.status === "open" ? "dark" : "danger"}>
-                        {job.status === "open" ? t.employer.open : t.employer.closed}
+                        {job.status === "open" ? t.employer.open : job.status === "cancelled" ? t.appStatus.cancelled : t.employer.closed}
                       </Badge>
                       <Badge>{t.trades[job.trade]}</Badge>
                       {fresh > 0 && <Badge tone="accent">{t.employer.newApplicants(fresh)}</Badge>}
+                      <span className="text-sm text-muted">{t.hire.positions(filledCount(applications, job.id), job.workersNeeded)}</span>
                     </div>
                     <h2 className="text-xl font-semibold sm:text-2xl">{tx(job.title, lang)}</h2>
                     <p className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-muted">
@@ -91,6 +107,23 @@ export default function EmployerDashboard() {
           })}
         </ol>
       )}
+
+      <section aria-labelledby="ticket-history" className="mt-14">
+        <h2 id="ticket-history" className="mb-4 border-b-2 border-ink pb-3 text-2xl font-semibold">
+          {t.ticket.historyTitle}
+        </h2>
+        {myTickets.length === 0 ? (
+          <EmptyState title={t.ticket.noTicketsEmployer} />
+        ) : (
+          <ul className="grid gap-4 md:grid-cols-2">
+            {myTickets.map(({ ticket, app }) => (
+              <li key={ticket.id}>
+                <TicketCard ticket={ticket} status={app?.status ?? "confirmed"} href={`/tickets/${ticket.id}`} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }

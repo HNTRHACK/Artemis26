@@ -57,7 +57,8 @@ export type Benefit = (typeof BENEFITS)[number];
 export const AVAILABILITY = ["now", "week", "month"] as const;
 export type Availability = (typeof AVAILABILITY)[number];
 
-export type JobStatus = "open" | "closed";
+/** Publication state of a listing — separate from each worker's application state. */
+export type JobStatus = "open" | "closed" | "cancelled";
 
 export interface Job {
   id: string;
@@ -99,7 +100,49 @@ export interface WorkerProfile {
   owner: "local" | "seed";
 }
 
-export type ApplicationStatus = "interested" | "shortlisted" | "declined" | "withdrawn";
+/**
+ * Hiring lifecycle of one worker on one job. "available" (no application yet) is derived, never stored.
+ * interested → shortlisted → offered → accepted → confirmed → in_progress → completed
+ * with exits to declined (by either side) and cancelled.
+ */
+export const APPLICATION_STATUSES = [
+  "interested",
+  "shortlisted",
+  "offered",
+  "accepted",
+  "confirmed",
+  "in_progress",
+  "completed",
+  "cancelled",
+  "declined",
+] as const;
+export type ApplicationStatus = (typeof APPLICATION_STATUSES)[number];
+export type LifecycleStatus = "available" | ApplicationStatus;
+
+export type Actor = "worker" | "employer" | "system";
+
+export interface StatusEvent {
+  status: ApplicationStatus;
+  at: number;
+  by: Actor;
+  /** Machine-readable reason, e.g. "simulated" or "job-cancelled". */
+  note?: string;
+}
+
+/** Terms the employer offers; snapshotted into the ticket on acceptance. */
+export interface Offer {
+  wage: number;
+  wageUnit: WageUnit;
+  startDate: string;
+  hours: string;
+  duration: Duration;
+  paymentTerm: PaymentTerm;
+  paymentMode: PaymentMode;
+  tools: string;
+  instructions: string;
+  employerConsent: boolean;
+  sentAt: number;
+}
 
 export interface Application {
   id: string;
@@ -107,7 +150,46 @@ export interface Application {
   workerId: string;
   status: ApplicationStatus;
   createdAt: number;
+  updatedAt: number;
+  history: StatusEvent[];
+  offer?: Offer;
+  /** Worker agreed to share their number with this employer when accepting. */
+  workerConsent?: boolean;
+  declinedBy?: Actor;
+  cancelledBy?: Actor;
+  ticketId?: string;
 }
+
+/** Job confirmation ticket: an immutable snapshot of agreed terms. Not an invoice or contract. */
+export interface Ticket {
+  id: string;
+  code: string;
+  applicationId: string;
+  jobId: string;
+  workerId: string;
+  createdAt: number;
+  workerName: string;
+  workerPhone: string;
+  employerName: string;
+  employerContact: string;
+  employerPhone: string;
+  trade: Trade;
+  title: Localized;
+  description: Localized;
+  area: Area;
+  address: Localized;
+  startDate: string;
+  duration: Duration;
+  hours: string;
+  wage: number;
+  wageUnit: WageUnit;
+  paymentTerm: PaymentTerm;
+  paymentMode: PaymentMode;
+  tools: string;
+  instructions: string;
+}
+
+export type Role = "worker" | "employer";
 
 export interface EmployerProfile {
   name: string;

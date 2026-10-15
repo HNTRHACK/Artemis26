@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { SlidersHorizontal } from "lucide-react";
 import { JobCard } from "@/components/cards";
 import { Button, EmptyState, Field, LinkButton, PageTitle, Select, cx } from "@/components/ui";
+import { VoiceGuide } from "@/components/VoiceGuide";
 import { useT } from "@/lib/i18n";
 import { filterJobs, PAY_STEPS, type JobFilters, type JobSort } from "@/lib/jobs";
 import { useApp } from "@/lib/store";
@@ -32,6 +33,7 @@ export default function JobsPage() {
   return (
     <div>
       <PageTitle title={t.jobs.title} sub={t.jobs.subtitle(t.areas[home])} />
+      <VoiceGuide guide="find-work" className="mb-6" />
 
       {!me && (
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-3xl bg-marigold/25 p-5">

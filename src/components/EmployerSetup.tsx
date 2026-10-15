@@ -3,13 +3,14 @@
 import { useState } from "react";
 import { useT } from "@/lib/i18n";
 import { useApp } from "@/lib/store";
+import type { EmployerProfile } from "@/lib/types";
 import { Button, Field, TextInput } from "./ui";
 
 /** One-time employer identity, shown on every listing. */
-export function EmployerSetup() {
+export function EmployerSetup({ initial, onDone }: { initial?: EmployerProfile | null; onDone?: () => void } = {}) {
   const t = useT();
   const setEmployer = useApp((s) => s.setEmployer);
-  const [f, setF] = useState({ name: "", organisation: "", phone: "" });
+  const [f, setF] = useState({ name: initial?.name ?? "", organisation: initial?.organisation ?? "", phone: initial?.phone ?? "" });
   const [errors, setErrors] = useState<{ name?: string; phone?: string }>({});
 
   function submit(e: React.FormEvent) {
@@ -20,6 +21,7 @@ export function EmployerSetup() {
     setErrors(next);
     if (Object.keys(next).length) return;
     setEmployer({ name: f.name.trim(), organisation: f.organisation.trim(), phone: f.phone.replace(/\D/g, "") });
+    onDone?.();
   }
 
   return (
@@ -33,11 +35,11 @@ export function EmployerSetup() {
         <Field label={t.employer.organisation} optional={t.common.optional}>
           {(id) => <TextInput id={id} value={f.organisation} placeholder="Shree Ganesh Constructions" autoComplete="organization" onChange={(e) => setF({ ...f, organisation: e.target.value })} />}
         </Field>
-        <Field label={t.employer.phone} error={errors.phone}>
+        <Field label={t.employer.phone} hint={t.phoneDemoHint} error={errors.phone}>
           {(id, d) => <TextInput id={id} aria-describedby={d} invalid={!!errors.phone} value={f.phone} inputMode="numeric" maxLength={14} autoComplete="tel-national" onChange={(e) => setF({ ...f, phone: e.target.value })} />}
         </Field>
         <Button type="submit" variant="accent" className="text-lg">
-          {t.employer.startHiring} →
+          {initial ? t.common.save : `${t.employer.startHiring} →`}
         </Button>
       </form>
     </div>

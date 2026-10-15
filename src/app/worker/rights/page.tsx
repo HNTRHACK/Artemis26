@@ -3,12 +3,14 @@
 import { Phone } from "lucide-react";
 import { PageTitle } from "@/components/ui";
 import { useT } from "@/lib/i18n";
+import { VoiceGuide } from "@/components/VoiceGuide";
 
 export default function RightsPage() {
   const t = useT();
   return (
     <div className="mx-auto max-w-3xl">
       <PageTitle title={t.rights.title} sub={t.rights.intro} />
+      <VoiceGuide guide="rights" className="mb-8" />
 
       <section aria-labelledby="helplines" className="mb-10 rounded-3xl bg-ink p-6 text-ivory">
         <h2 id="helplines" className="kicker text-mist">

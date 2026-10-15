@@ -1,14 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { use } from "react";
-import { ArrowLeft, Bookmark, BookmarkCheck, CalendarDays, Clock, MapPin, ShieldAlert } from "lucide-react";
-import { useNow, Wage } from "@/components/cards";
+import { use, useState } from "react";
+import { ArrowLeft, Bookmark, BookmarkCheck, CalendarDays, Clock, MapPin, ShieldAlert, Ticket as TicketIcon } from "lucide-react";
+import { StatusBadge, useNow, Wage } from "@/components/cards";
 import { Badge, Button, EmptyState, LinkButton } from "@/components/ui";
-import { formatDate, tx, useLang, useT } from "@/lib/i18n";
+import { VoiceGuide } from "@/components/VoiceGuide";
+import { formatDate, formatDateLong, tx, useLang, useT } from "@/lib/i18n";
 import { distanceKm } from "@/lib/geo";
 import { dailyEstimate } from "@/lib/jobs";
-import { useApp } from "@/lib/store";
+import { acceptBlockReason, HIRED, isFilled } from "@/lib/lifecycle";
+import { useApp, type Result } from "@/lib/store";
+import type { Application, Job } from "@/lib/types";
 
 export function JobDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -17,21 +20,22 @@ export function JobDetail({ params }: { params: Promise<{ id: string }> }) {
   const now = useNow();
   const job = useApp((s) => s.jobs.find((j) => j.id === id));
   const me = useApp((s) => s.myProfile);
-  const app = useApp((s) => (me ? s.applications.find((a) => a.jobId === id && a.workerId === me.id) : undefined));
+  const applications = useApp((s) => s.applications);
   const saved = useApp((s) => s.savedJobIds.includes(id));
   const { expressInterest, withdrawInterest, toggleSaved } = useApp.getState();
+  const [error, setError] = useState("");
 
   if (!job) {
-    return (
-      <EmptyState
-        title={t.common.notFound}
-        action={<LinkButton href="/worker/jobs">{t.common.goBack}</LinkButton>}
-      />
-    );
+    return <EmptyState title={t.common.notFound} action={<LinkButton href="/worker/jobs">{t.common.goBack}</LinkButton>} />;
   }
 
-  const active = app && app.status !== "withdrawn";
+  const app = me ? applications.find((a) => a.jobId === id && a.workerId === me.id) : undefined;
   const km = me ? distanceKm(me.area, job.area) : undefined;
+  const filled = isFilled(job, applications);
+  const canReapply =
+    !app ||
+    (app.status === "cancelled" && app.cancelledBy === "worker") ||
+    (app.status === "declined" && app.declinedBy === "worker");
 
   const facts: [string, string][] = [
     [t.job.duration, t.duration[job.duration]],
@@ -41,6 +45,22 @@ export function JobDetail({ params }: { params: Promise<{ id: string }> }) {
     [t.job.experience, t.common.years(job.experienceMin)],
   ];
 
+  // Structured summary of *this* job for device speech (recorded clips cannot cover every listing).
+  const spoken = [
+    tx(job.title, lang),
+    `${t.job.pay}: ${t.common.inr(job.wage)} ${t.wageUnit[job.wageUnit]}`,
+    `${t.job.payment}: ${t.paymentTerm[job.paymentTerm]}, ${t.paymentMode[job.paymentMode]}`,
+    `${t.job.duration}: ${t.duration[job.duration]}`,
+    `${t.job.location}: ${tx(job.address, lang)}, ${t.areas[job.area]}`,
+    `${t.job.start}: ${formatDateLong(job.startDate, lang)}`,
+    `${t.job.hours}: ${job.hours}`,
+  ].join(". ");
+
+  function apply() {
+    const r = expressInterest(job!.id);
+    setError(r.ok ? "" : t.offer.blocked[r.reason === "invalid" ? "invalid" : r.reason]);
+  }
+
   return (
     <article className="mx-auto max-w-3xl">
       <Link href="/worker/jobs" className="mb-6 inline-flex min-h-11 items-center gap-2 font-semibold hover:underline">
@@ -49,13 +69,19 @@ export function JobDetail({ params }: { params: Promise<{ id: string }> }) {
 
       <div className="flex flex-wrap items-center gap-2">
         <Badge tone="dark">{t.trades[job.trade]}</Badge>
-        {app && <Badge tone={app.status === "shortlisted" ? "success" : app.status === "declined" ? "danger" : "accent"}>{t.appStatus[app.status]}</Badge>}
+        {app && <StatusBadge status={app.status} />}
+        {filled && <Badge tone="danger">{t.hire.full}</Badge>}
         <span className="text-sm text-muted">{t.common.postedAgo((now - job.postedAt) / 3_600_000)}</span>
       </div>
       <h1 className="display mt-4 text-4xl sm:text-6xl">{tx(job.title, lang)}</h1>
       <p className="mt-3 text-lg text-muted">
         {t.job.employer}: <span className="font-semibold text-ink">{job.employerName}</span>
       </p>
+      {app && <p className="mt-2 font-medium">{t.statusHelp[app.status]}</p>}
+
+      <VoiceGuide guide="job-details" className="mt-6" />
+
+      {app?.status === "offered" && app.offer && <OfferPanel job={job} app={app} />}
 
       {/* Wage first — transparency is the point */}
       <section aria-label={t.job.pay} className="mt-8 rounded-3xl bg-ink p-6 text-ivory sm:p-8">
@@ -63,9 +89,7 @@ export function JobDetail({ params }: { params: Promise<{ id: string }> }) {
         <div className="mt-2 [&_.text-muted]:text-mist">
           <Wage job={job} size="lg" />
         </div>
-        {job.wageUnit !== "day" && (
-          <p className="mt-2 text-mist">{t.job.estimate(t.common.inr(dailyEstimate(job)))}</p>
-        )}
+        {job.wageUnit !== "day" && <p className="mt-2 text-mist">{t.job.estimate(t.common.inr(dailyEstimate(job)))}</p>}
         <dl className="mt-6 grid grid-cols-2 gap-4 border-t border-ivory/15 pt-6 sm:grid-cols-3">
           {facts.map(([k, v]) => (
             <div key={k}>
@@ -74,6 +98,7 @@ export function JobDetail({ params }: { params: Promise<{ id: string }> }) {
             </div>
           ))}
         </dl>
+        <VoiceGuide guide="payment-terms" tone="dark" className="mt-6" />
       </section>
 
       <section className="mt-8 grid gap-4 sm:grid-cols-3">
@@ -105,6 +130,7 @@ export function JobDetail({ params }: { params: Promise<{ id: string }> }) {
       <section className="mt-10">
         <h2 className="text-2xl font-semibold">{t.job.about}</h2>
         <p className="mt-3 text-lg leading-relaxed">{tx(job.description, lang)}</p>
+        <VoiceGuide text={spoken} className="mt-4" />
       </section>
 
       <section className="mt-8">
@@ -127,18 +153,20 @@ export function JobDetail({ params }: { params: Promise<{ id: string }> }) {
         {t.job.safety}
       </p>
 
-      {/* Action bar */}
+      {/* Action bar — depends on where this worker is in the lifecycle */}
       <div className="sticky bottom-20 z-20 mt-8 rounded-3xl border-2 border-ivory-3 bg-ivory/95 p-4 shadow-lg backdrop-blur md:bottom-6">
-        {job.status === "closed" ? (
-          <p className="text-center font-semibold text-danger">{t.job.closed}</p>
-        ) : !me ? (
+        {app && HIRED.includes(app.status) && app.ticketId ? (
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="font-medium">{t.job.needProfile}</p>
-            <LinkButton href="/worker/onboarding" variant="accent">
-              {t.job.createProfile}
+            <p className="text-lg font-semibold text-success">✓ {t.appStatus[app.status]}</p>
+            <LinkButton href={`/tickets/${app.ticketId}`} variant="primary">
+              <TicketIcon size={18} aria-hidden /> {t.offer.viewTicket}
             </LinkButton>
           </div>
-        ) : active ? (
+        ) : app?.status === "offered" ? (
+          <a href="#offer" className="block text-center text-lg font-semibold underline-offset-4 hover:underline">
+            ↑ {t.workerHome.reviewOffer}
+          </a>
+        ) : app && (app.status === "interested" || app.status === "shortlisted") ? (
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div role="status">
               <p className="text-lg font-semibold text-success">✓ {t.job.interestSent}</p>
@@ -148,25 +176,119 @@ export function JobDetail({ params }: { params: Promise<{ id: string }> }) {
               {t.job.withdraw}
             </Button>
           </div>
+        ) : job.status !== "open" ? (
+          <p className="text-center font-semibold text-danger">{job.status === "cancelled" ? t.hire.jobCancelled : t.job.closed}</p>
+        ) : !me ? (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="font-medium">{t.job.needProfile}</p>
+            <LinkButton href="/worker/onboarding" variant="accent">
+              {t.job.createProfile}
+            </LinkButton>
+          </div>
+        ) : !canReapply ? (
+          <p className="text-center font-semibold">{t.statusHelp[app!.status]}</p>
+        ) : filled ? (
+          <p className="text-center font-semibold text-danger">{t.offer.blocked.filled}</p>
         ) : (
-          <div className="flex gap-3">
-            <Button variant="accent" className="flex-1 text-lg" onClick={() => expressInterest(job.id)}>
-              {t.job.interested}
-            </Button>
-            <Button
-              variant="secondary"
-              aria-pressed={saved}
-              aria-label={saved ? t.job.savedLabel : t.job.save}
-              title={saved ? t.job.savedLabel : t.job.save}
-              className="px-5"
-              onClick={() => toggleSaved(job.id)}
-            >
-              {saved ? <BookmarkCheck aria-hidden /> : <Bookmark aria-hidden />}
-              <span className="hidden sm:inline">{saved ? t.job.savedLabel : t.job.save}</span>
-            </Button>
+          <div className="flex flex-col gap-2">
+            <div className="flex gap-3">
+              <Button variant="accent" className="flex-1 text-lg" onClick={apply}>
+                {t.job.interested}
+              </Button>
+              <Button
+                variant="secondary"
+                aria-pressed={saved}
+                aria-label={saved ? t.job.savedLabel : t.job.save}
+                title={saved ? t.job.savedLabel : t.job.save}
+                className="px-5"
+                onClick={() => toggleSaved(job.id)}
+              >
+                {saved ? <BookmarkCheck aria-hidden /> : <Bookmark aria-hidden />}
+                <span className="hidden sm:inline">{saved ? t.job.savedLabel : t.job.save}</span>
+              </Button>
+            </div>
+            {error && (
+              <p role="alert" className="font-semibold text-danger">
+                {error}
+              </p>
+            )}
           </div>
         )}
       </div>
     </article>
+  );
+}
+
+/** Complete offer terms with consent, accept and decline. */
+function OfferPanel({ job, app }: { job: Job; app: Application }) {
+  const t = useT();
+  const lang = useLang();
+  const applications = useApp((s) => s.applications);
+  const respondToOffer = useApp((s) => s.respondToOffer);
+  const [consent, setConsent] = useState(false);
+  const [result, setResult] = useState<Result | null>(null);
+  const offer = app.offer!;
+  // Show block reasons (closed / filled) before the worker even tries.
+  const blocked = acceptBlockReason(job, app, applications, true);
+
+  const rows: [string, string][] = [
+    [t.job.pay, `${t.common.inr(offer.wage)} ${t.wageUnit[offer.wageUnit]}`],
+    [t.job.payment, t.paymentTerm[offer.paymentTerm]],
+    [t.job.paymentMode, t.paymentMode[offer.paymentMode]],
+    [t.job.start, formatDateLong(offer.startDate, lang)],
+    [t.job.hours, offer.hours],
+    [t.job.duration, t.duration[offer.duration]],
+    [t.job.location, `${tx(job.address, lang)}, ${t.areas[job.area]}`],
+    [t.offer.tools, offer.tools || t.offer.none],
+    [t.offer.instructions, offer.instructions || t.offer.none],
+  ];
+
+  function accept() {
+    setResult(respondToOffer(app.id, true, consent));
+  }
+  function decline() {
+    if (window.confirm(t.offer.declineConfirm)) setResult(respondToOffer(app.id, false, false));
+  }
+
+  const failure = result && !result.ok ? t.offer.blocked[result.reason] : blocked ? t.offer.blocked[blocked] : "";
+
+  return (
+    <section id="offer" aria-labelledby="offer-title" className="mt-8 scroll-mt-28 rounded-3xl border-4 border-marigold bg-white p-5 sm:p-7">
+      <p className="kicker text-muted">{t.offer.from(job.employerName)}</p>
+      <h2 id="offer-title" className="display mt-2 text-4xl">
+        {t.offer.title}
+      </h2>
+      <p className="mt-2 text-muted">{t.offer.intro}</p>
+      <VoiceGuide guide="offer-accepted" className="mt-4" />
+      <dl className="mt-6 grid gap-x-6 gap-y-4 sm:grid-cols-2">
+        {rows.map(([k, v]) => (
+          <div key={k} className="border-b border-ivory-3 pb-3">
+            <dt className="text-sm text-muted">{k}</dt>
+            <dd className="text-lg font-semibold" data-offer-term={k}>
+              {v}
+            </dd>
+          </div>
+        ))}
+      </dl>
+      {!blocked && (
+        <label className="mt-6 flex cursor-pointer items-start gap-3 rounded-2xl bg-ivory-2 p-4 text-base font-medium">
+          <input type="checkbox" className="mt-1 size-6 shrink-0 accent-ink" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
+          {t.offer.consent}
+        </label>
+      )}
+      {failure && (
+        <p role="alert" className="mt-4 font-semibold text-danger">
+          {failure}
+        </p>
+      )}
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+        <Button variant="accent" className="flex-1 text-lg" disabled={!!blocked} onClick={accept}>
+          ✓ {t.offer.accept}
+        </Button>
+        <Button variant="secondary" className="flex-1" onClick={decline}>
+          {t.offer.decline}
+        </Button>
+      </div>
+    </section>
   );
 }

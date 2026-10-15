@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "audio:check": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/audio.mjs",
+    "audio:checklist": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/audio.mjs --checklist"
   },
   "dependencies": {
     "gsap": "^3.15.0",

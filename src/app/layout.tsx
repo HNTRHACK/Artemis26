@@ -22,13 +22,23 @@ const devaSerif = Noto_Serif_Devanagari({
 });
 
 export const metadata: Metadata = {
-  title: { default: "KaamSetu — Beyond the waiting line", template: "%s · KaamSetu" },
+  title: { default: "UMANG — Beyond the Waiting Line", template: "%s · UMANG" },
   description:
-    "KaamSetu connects skilled workers in Mumbai to nearby jobs with clear wages — in English, Hindi and Marathi.",
+    "UMANG connects skilled workers in Mumbai to nearby jobs with clear wages, hiring offers and job tickets — in English, Hindi and Marathi. Independent hackathon prototype, not affiliated with any government app.",
+  applicationName: "UMANG",
+  appleWebApp: { capable: true, title: "UMANG", statusBarStyle: "black-translucent" },
+  icons: { apple: "/icons/apple-touch-icon.png" },
+  formatDetection: { telephone: false },
+  openGraph: {
+    title: "UMANG — Beyond the Waiting Line",
+    description: "Work should find you. Multilingual, audio-assisted job matching for skilled workers.",
+    type: "website",
+  },
 };
 
 export const viewport: Viewport = {
   themeColor: "#0b0a09",
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
